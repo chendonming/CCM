@@ -72,6 +72,8 @@ pub fn scan_directory(dir: &Path) -> Result<Vec<Entity>> {
 
         let language = detect_language(&parsed.description);
 
+        let has_translation = crate::core::skill::translation::has_translation_cache(&id);
+
         entities.push(Entity {
             id,
             entity_type,
@@ -81,7 +83,7 @@ pub fn scan_directory(dir: &Path) -> Result<Vec<Entity>> {
             resource_dir,
             deployments: vec![],
             language,
-            has_translation: false,
+            has_translation,
             category: "未分类".to_string(),
             origin: parsed
                 .metadata

@@ -56,6 +56,7 @@ export default function SkillDetailPage() {
   const [loading, setLoading] = useState(false);
   const [translatedContent, setTranslatedContent] = useState<string | null>(null);
   const [translationLoading, setTranslationLoading] = useState(false);
+  const [translationStale, setTranslationStale] = useState(false);
   const [gitStatus, setGitStatus] = useState<string | null>(null);
 
   useEffect(() => {
@@ -68,7 +69,7 @@ export default function SkillDetailPage() {
       setSkill(found || null);
 
       if (found) {
-        checkTranslation(found.id);
+        checkTranslation(found.id, found.source_path);
         if (found.is_git_repo && found.remote_url) {
           checkGitStatus(found.resource_dir);
         }
@@ -76,13 +77,25 @@ export default function SkillDetailPage() {
     }
   }, [skills, id]);
 
-  const checkTranslation = async (skillId: string) => {
+  const checkTranslation = async (skillId: string, sourcePath: string) => {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      const has = await invoke<boolean>('has_translation', { skillId });
+      const has = await invoke<boolean>('has_translation', { skillId, sourcePath });
       if (has) {
         const content = await invoke<string | null>('get_translation', { skillId });
         setTranslatedContent(content);
+        setTranslationStale(false);
+      } else {
+        // Cache exists but is stale (source modified after translation)
+        // Check if there's any cached content at all to show the user
+        const content = await invoke<string | null>('get_translation', { skillId });
+        if (content) {
+          setTranslatedContent(content);
+          setTranslationStale(true);
+        } else {
+          setTranslatedContent(null);
+          setTranslationStale(false);
+        }
       }
     } catch { /* ignore */ }
   };
@@ -98,12 +111,14 @@ export default function SkillDetailPage() {
   const handleTranslate = async () => {
     if (!skill) return;
     setTranslationLoading(true);
+    setTranslationStale(false);
     setActiveTab('translated');
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       const content = await invoke<string>('get_skill_content', { path: skill.source_path });
       const translated = await invoke<string>('translate_skill', {
         skillId: skill.id,
+        sourcePath: skill.source_path,
         body: content,
       });
       setTranslatedContent(translated);
@@ -199,7 +214,13 @@ export default function SkillDetailPage() {
               disabled={translationLoading}
             >
               <Languages className="mr-1 h-4 w-4" />
-              {translationLoading ? '翻译中...' : translatedContent ? '重新翻译' : '翻译为中文'}
+              {translationLoading
+                ? '翻译中...'
+                : translationStale
+                  ? '翻译已过期，重新翻译'
+                  : translatedContent
+                    ? '重新翻译'
+                    : '翻译为中文'}
             </Button>
             <Link to={`/skills/${skill.id}/edit`}>
               <Button variant="outline" size="sm" disabled={skill.is_git_repo}>
@@ -274,6 +295,11 @@ export default function SkillDetailPage() {
         <TabsContent value="translated" className="mt-4">
           <Card>
             <CardContent className="prose prose-sm dark:prose-invert max-w-none p-6">
+              {translationStale && (
+                <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                  源文件已更新，当前翻译可能已过时。点击「翻译已过期，重新翻译」按钮更新。
+                </div>
+              )}
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {translatedContent || (translationLoading ? '翻译加载中...' : '')}
               </ReactMarkdown>
