@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSourcesStore } from '@/stores/useSourcesStore';
 import { useSkillsStore } from '@/stores/useSkillsStore';
+import { useMessage } from '@/hooks/useMessage';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -30,6 +31,7 @@ import {
   FolderGit2,
   AlertTriangle,
   FileText,
+  Loader2,
 } from 'lucide-react';
 import type { ConflictInfo } from '@/types';
 
@@ -37,30 +39,58 @@ export default function SourcesPage() {
   const navigate = useNavigate();
   const { sources, fetchSources, addSource, removeSource } = useSourcesStore();
   const { skills, fetchSkills } = useSkillsStore();
+  const message = useMessage();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newPath, setNewPath] = useState('');
   const [conflicts, setConflicts] = useState<ConflictInfo[]>([]);
   const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
+  const nameManuallyEdited = useRef(false);
+  const [loadingPath, setLoadingPath] = useState<string | null>(null);
+
+  const extractFolderName = (path: string) => {
+    const normalized = path.replace(/\\/g, '/');
+    const segments = normalized.split('/').filter(Boolean);
+    return segments[segments.length - 1] || '';
+  };
 
   useEffect(() => {
     fetchSources();
     fetchSkills();
   }, []);
 
+  useEffect(() => {
+    if (!nameManuallyEdited.current && newPath) {
+      const name = extractFolderName(newPath);
+      if (name) setNewName(name);
+    }
+  }, [newPath]);
+
   const openInExplorer = async (path: string) => {
+    if (loadingPath) return;
+    setLoadingPath(path);
     const { invoke } = await import('@tauri-apps/api/core');
     try {
       await invoke('open_in_explorer', { path });
     } catch (err) {
-      console.error('Failed to open explorer:', err);
+      message.error(`无法打开路径：${String(err)}`);
+    } finally {
+      setLoadingPath(null);
     }
   };
 
   const handleAdd = async () => {
-    if (!newName || !newPath) return;
+    if (!newName) {
+      message.warning('请填写显示名称');
+      return;
+    }
+    if (!newPath) {
+      message.warning('请填写目录路径');
+      return;
+    }
     try {
       await addSource(newName, newPath);
+      message.success(`源目录「${newName}」添加成功`);
       setNewName('');
       setNewPath('');
       setAddDialogOpen(false);
@@ -75,13 +105,19 @@ export default function SourcesPage() {
         } catch {
           console.error('Failed to parse conflict info');
         }
+      } else {
+        message.error(`添加失败：${errStr}`);
       }
     }
   };
 
   const handleRemove = async (id: string) => {
-    await removeSource(id);
-    fetchSkills();
+    try {
+      await removeSource(id);
+      fetchSkills();
+    } catch (err) {
+      message.error(`删除失败：${String(err)}`);
+    }
   };
 
   const getSkillCount = (sourcePath: string) => {
@@ -109,7 +145,14 @@ export default function SourcesPage() {
             <RefreshCw className="mr-1 h-4 w-4" />
             刷新
           </Button>
-          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+          <Dialog open={addDialogOpen} onOpenChange={(open) => {
+            setAddDialogOpen(open);
+            if (!open) {
+              setNewName('');
+              setNewPath('');
+              nameManuallyEdited.current = false;
+            }
+          }}>
             <DialogTrigger render={<Button size="sm" />}>
               <Plus className="mr-1 h-4 w-4" />
               添加源目录
@@ -127,7 +170,10 @@ export default function SourcesPage() {
                   <Input
                     placeholder="例如：ECC"
                     value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
+                    onChange={(e) => {
+                      nameManuallyEdited.current = true;
+                      setNewName(e.target.value);
+                    }}
                   />
                 </div>
                 <div className="space-y-2">
@@ -247,22 +293,42 @@ export default function SourcesPage() {
                     <FileText className="h-3.5 w-3.5 text-destructive shrink-0" />
                     <span className="text-muted-foreground shrink-0">新源:</span>
                     <button
-                      className="flex-1 truncate rounded px-1.5 py-0.5 text-left font-mono text-xs text-blue-600 underline-offset-2 hover:bg-accent hover:underline dark:text-blue-400"
+                      className={`flex-1 truncate rounded px-1.5 py-0.5 text-left font-mono text-xs text-blue-600 underline-offset-2 hover:bg-accent hover:underline dark:text-blue-400 ${
+                        loadingPath === conflict.new_path ? 'cursor-wait opacity-60' : ''
+                      }`}
                       title="在资源管理器中打开"
+                      disabled={!!loadingPath}
                       onClick={() => openInExplorer(conflict.new_path)}
                     >
-                      {conflict.new_path}
+                      {loadingPath === conflict.new_path ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          打开中...
+                        </span>
+                      ) : (
+                        conflict.new_path
+                      )}
                     </button>
                   </div>
                   <div className="flex items-center gap-2">
                     <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <span className="text-muted-foreground shrink-0">已有:</span>
                     <button
-                      className="flex-1 truncate rounded px-1.5 py-0.5 text-left font-mono text-xs text-blue-600 underline-offset-2 hover:bg-accent hover:underline dark:text-blue-400"
+                      className={`flex-1 truncate rounded px-1.5 py-0.5 text-left font-mono text-xs text-blue-600 underline-offset-2 hover:bg-accent hover:underline dark:text-blue-400 ${
+                        loadingPath === conflict.existing_path ? 'cursor-wait opacity-60' : ''
+                      }`}
                       title="在资源管理器中打开"
+                      disabled={!!loadingPath}
                       onClick={() => openInExplorer(conflict.existing_path)}
                     >
-                      {conflict.existing_path}
+                      {loadingPath === conflict.existing_path ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          打开中...
+                        </span>
+                      ) : (
+                        conflict.existing_path
+                      )}
                     </button>
                   </div>
                 </div>
