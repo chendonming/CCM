@@ -148,12 +148,12 @@ export default function SkillsPage() {
           <TableHeader>
             <TableRow>
               <TableHead className="w-[35%]">名称</TableHead>
-              <TableHead className="w-0 min-w-20">分类</TableHead>
-              <TableHead className="w-0 min-w-16">语言</TableHead>
-              <TableHead className="w-0 min-w-28">来源</TableHead>
-              <TableHead className="w-0 min-w-28">部署</TableHead>
-              <TableHead className="w-0 min-w-16">Git</TableHead>
-              <TableHead className="w-0 min-w-12"></TableHead>
+              <TableHead className="min-w-20">分类</TableHead>
+              <TableHead className="min-w-16">语言</TableHead>
+              <TableHead className="min-w-28">来源</TableHead>
+              <TableHead className="min-w-28">部署</TableHead>
+              <TableHead className="min-w-16">Git</TableHead>
+              <TableHead className="min-w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
