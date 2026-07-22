@@ -64,25 +64,25 @@ export default function MemoryPage() {
       </div>
 
       {orphans.length > 0 && (
-        <Card className="mb-4 border-amber-200 bg-amber-50">
+        <Card className="mb-4 border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm text-amber-800">
+            <CardTitle className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300">
               <AlertTriangle className="h-4 w-4" />
               发现 {orphans.length} 个孤儿引用
             </CardTitle>
-            <CardDescription className="text-xs text-amber-600">
+            <CardDescription className="text-xs text-amber-600 dark:text-amber-400">
               以下引用指向不存在的 Memory 条目
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="space-y-1 text-xs">
               {orphans.slice(0, 10).map((orphan, i) => (
-                <li key={i} className="text-amber-700">
+                <li key={i} className="text-amber-700 dark:text-amber-300">
                   {orphan}
                 </li>
               ))}
               {orphans.length > 10 && (
-                <li className="text-amber-500">...还有 {orphans.length - 10} 个</li>
+                <li className="text-amber-500 dark:text-amber-400">...还有 {orphans.length - 10} 个</li>
               )}
             </ul>
           </CardContent>

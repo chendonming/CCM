@@ -245,7 +245,7 @@ export default function SkillDetailPage() {
             </TabsList>
             <TabsContent value="preview" className="mt-4">
               <Card>
-                <CardContent className="prose prose-sm max-w-none p-6">
+                <CardContent className="prose prose-sm dark:prose-invert max-w-none p-6">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {`# ${skill.name}\n\n${skill.description}\n\n${skill.body}`}
                   </ReactMarkdown>
@@ -254,7 +254,7 @@ export default function SkillDetailPage() {
             </TabsContent>
             <TabsContent value="translated" className="mt-4">
               <Card>
-                <CardContent className="prose prose-sm max-w-none p-6">
+                <CardContent className="prose prose-sm dark:prose-invert max-w-none p-6">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {translatedContent || ''}
                   </ReactMarkdown>

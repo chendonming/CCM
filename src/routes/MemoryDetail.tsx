@@ -70,7 +70,7 @@ export default function MemoryDetailPage() {
             <CardHeader>
               <CardTitle className="text-sm">内容</CardTitle>
             </CardHeader>
-            <CardContent className="prose prose-sm max-w-none">
+            <CardContent className="prose prose-sm dark:prose-invert max-w-none">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {entry.content}
               </ReactMarkdown>
@@ -94,11 +94,11 @@ export default function MemoryDetailPage() {
                     return (
                       <li key={i} className="flex items-center gap-2 text-sm">
                         {exists ? (
-                          <Link className="h-3 w-3 text-green-500" />
+                          <Link className="h-3 w-3 text-green-500 dark:text-green-400" />
                         ) : (
-                          <Link2Off className="h-3 w-3 text-amber-500" />
+                          <Link2Off className="h-3 w-3 text-amber-500 dark:text-amber-400" />
                         )}
-                        <span className={exists ? '' : 'text-amber-600 line-through'}>
+                        <span className={exists ? '' : 'text-amber-600 dark:text-amber-300 line-through'}>
                           {ref}
                         </span>
                       </li>

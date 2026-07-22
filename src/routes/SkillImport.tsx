@@ -88,7 +88,7 @@ export default function SkillImportPage() {
           )}
 
           {result && (
-            <div className="rounded-md bg-green-50 p-3 text-sm text-green-700">
+            <div className="rounded-md bg-green-50 dark:bg-green-950/40 p-3 text-sm text-green-700 dark:text-green-300">
               {result}
             </div>
           )}

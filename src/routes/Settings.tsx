@@ -107,9 +107,9 @@ export default function SettingsPage() {
               <div className="flex items-center gap-2 text-sm">
                 <span>状态：</span>
                 {symlinkSupported ? (
-                  <span className="text-green-600">符号链接可用</span>
+                  <span className="text-green-600 dark:text-green-400">符号链接可用</span>
                 ) : (
-                  <span className="text-amber-600">符号链接不可用（需要提权）</span>
+                  <span className="text-amber-600 dark:text-amber-400">符号链接不可用（需要提权）</span>
                 )}
               </div>
             )}

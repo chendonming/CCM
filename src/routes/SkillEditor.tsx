@@ -72,7 +72,7 @@ export default function SkillEditorPage() {
             {skill?.name || '加载中...'}
           </span>
           {skill?.is_git_repo && (
-            <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
+            <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded">
               只读（Git 仓库中的 SKILL）
             </span>
           )}

@@ -45,9 +45,9 @@ const languageLabel: Record<string, string> = {
 };
 
 const languageColor: Record<string, string> = {
-  en: 'bg-blue-100 text-blue-800',
-  zh: 'bg-green-100 text-green-800',
-  bilingual: 'bg-purple-100 text-purple-800',
+  en: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+  zh: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+  bilingual: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
 };
 
 export default function SkillsPage() {
@@ -225,7 +225,7 @@ export default function SkillsPage() {
                     {skill.is_git_repo ? (
                       <Badge
                         variant="outline"
-                        className="text-xs text-green-600"
+                        className="text-xs text-green-600 dark:text-green-400"
                       >
                         已跟踪
                       </Badge>
