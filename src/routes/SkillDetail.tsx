@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useSkillsStore } from '@/stores/useSkillsStore';
+import { useConfigStore } from '@/stores/useConfigStore';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,6 +35,7 @@ import {
   BookOpen,
   Info,
   Circle,
+  Loader2,
   Trash2,
 } from 'lucide-react';
 import type { Entity } from '@/types';
@@ -47,7 +49,7 @@ const languageLabel: Record<string, string> = {
 export default function SkillDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { skills, fetchSkills, deploySkill, deleteEntity } = useSkillsStore();
+  const { skills, fetchSkills, deploySkill, undeploySkill, deleteEntity } = useSkillsStore();
   const [skill, setSkill] = useState<Entity | null>(null);
   const [activeTab, setActiveTab] = useState('preview');
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
@@ -61,6 +63,16 @@ export default function SkillDetailPage() {
   const [translationLoading, setTranslationLoading] = useState(false);
   const [translationStale, setTranslationStale] = useState(false);
   const [gitStatus, setGitStatus] = useState<string | null>(null);
+  const [selectedProjectRoot, setSelectedProjectRoot] = useState<string>('');
+  const [deploying, setDeploying] = useState(false);
+  const [undeployingId, setUndeployingId] = useState<string | null>(null);
+  const [deployError, setDeployError] = useState<string | null>(null);
+
+  const { config, fetchConfig } = useConfigStore();
+
+  useEffect(() => {
+    fetchConfig();
+  }, []);
 
   useEffect(() => {
     fetchSkills();
@@ -133,18 +145,29 @@ export default function SkillDetailPage() {
 
   const handleDeploy = async () => {
     if (!skill) return;
-    setLoading(true);
+    setDeploying(true);
+    setDeployError(null);
     try {
       await deploySkill(
         skill.source_path,
         deployTarget,
-        deployTarget === 'project' ? undefined : undefined,
+        deployTarget === 'project' ? selectedProjectRoot : undefined,
       );
       setDeployDialogOpen(false);
     } catch (err) {
-      console.error('Deploy failed:', err);
+      setDeployError(String(err));
     }
-    setLoading(false);
+    setDeploying(false);
+  };
+
+  const handleUndeploy = async (targetPath: string) => {
+    setUndeployingId(targetPath);
+    try {
+      await undeploySkill(targetPath);
+    } catch (err) {
+      console.error('Undeploy failed:', err);
+    }
+    setUndeployingId(null);
   };
 
   const handleDelete = async () => {
@@ -305,14 +328,25 @@ export default function SkillDetailPage() {
               </>
             ) : (
               <Dialog open={deployDialogOpen} onOpenChange={setDeployDialogOpen}>
-                <DialogTrigger render={<Button size="sm" />}>部署技能</DialogTrigger>
+                <DialogTrigger render={<Button size="sm" />}>
+                  {isDeployed ? '重新部署' : '部署技能'}
+                </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>部署 {skill.name}</DialogTitle>
+                    <DialogTitle>{isDeployed ? '重新部署' : '部署'} {skill.name}</DialogTitle>
                     <DialogDescription>选择部署目标位置</DialogDescription>
                   </DialogHeader>
-                  <div className="py-4">
-                    <Select value={deployTarget} onValueChange={setDeployTarget}>
+                  <div className="space-y-4 py-4">
+                    <Select
+                      value={deployTarget}
+                      onValueChange={(v) => {
+                        setDeployTarget(v);
+                        setDeployError(null);
+                        if (v === 'project' && config?.deployable_projects?.length) {
+                          setSelectedProjectRoot(config.deployable_projects[0].root_path);
+                        }
+                      }}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -332,17 +366,61 @@ export default function SkillDetailPage() {
                       </SelectContent>
                     </Select>
                     {deployTarget === 'project' && (
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        // TODO: 项目级部署需要选择一个项目路径
-                      </p>
+                      config?.deployable_projects && config.deployable_projects.length > 0 ? (
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">选择项目</label>
+                          <Select
+                            value={selectedProjectRoot}
+                            onValueChange={setSelectedProjectRoot}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="选择项目..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {config.deployable_projects.map((p) => (
+                                <SelectItem key={p.root_path} value={p.root_path}>
+                                  <div className="flex items-center gap-2">
+                                    <FolderGit2 className="h-4 w-4 shrink-0" />
+                                    <div className="min-w-0">
+                                      <span>{p.name}</span>
+                                      <span className="ml-2 text-xs text-muted-foreground truncate">
+                                        {p.root_path}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ) : (
+                        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                          暂无已配置的项目。请在设置中添加可部署项目。
+                        </div>
+                      )
+                    )}
+                    {deployError && (
+                      <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+                        {deployError}
+                      </div>
                     )}
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setDeployDialogOpen(false)}>
                       取消
                     </Button>
-                    <Button onClick={handleDeploy} disabled={loading}>
-                      确认部署
+                    <Button
+                      onClick={handleDeploy}
+                      disabled={deploying || (deployTarget === 'project' && !selectedProjectRoot)}
+                    >
+                      {deploying ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          部署中...
+                        </>
+                      ) : (
+                        '确认部署'
+                      )}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -434,18 +512,41 @@ export default function SkillDetailPage() {
           </DialogHeader>
           <div className="py-2">
             {isDeployed ? (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {skill.deployments.map((d, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm">
-                    {d.target.type === 'global' ? (
-                      <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
-                    ) : (
-                      <FolderGit2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                    )}
-                    <span>{d.target.type === 'global' ? '全局' : '项目'}</span>
-                    <span className="font-mono text-xs text-muted-foreground truncate">
-                      {d.target_path}
-                    </span>
+                  <div
+                    key={i}
+                    className="flex items-center justify-between gap-2 rounded-md border p-3"
+                  >
+                    <div className="flex items-center gap-2 text-sm min-w-0">
+                      {d.target.type === 'global' ? (
+                        <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
+                      ) : (
+                        <FolderGit2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">
+                          {d.target.type === 'global' ? '全局部署' : '项目部署'}
+                        </p>
+                        <p className="font-mono text-xs text-muted-foreground truncate">
+                          {d.target_path}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0 text-destructive hover:text-destructive"
+                      onClick={() => handleUndeploy(d.target_path)}
+                      disabled={undeployingId === d.target_path}
+                    >
+                      {undeployingId === d.target_path ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                      <span className="ml-1">移除</span>
+                    </Button>
                   </div>
                 ))}
               </div>
