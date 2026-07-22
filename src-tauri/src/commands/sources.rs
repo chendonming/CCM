@@ -1,4 +1,4 @@
-use crate::core::types::SourceDirectory;
+use crate::core::types::{ConflictResponse, SourceDirectory};
 use tauri::State;
 
 use crate::AppState;
@@ -10,7 +10,11 @@ pub async fn list_sources(_state: State<'_, AppState>) -> Result<Vec<SourceDirec
 }
 
 #[tauri::command]
-pub async fn add_source(name: String, path: String) -> Result<Vec<SourceDirectory>, String> {
+pub async fn add_source(
+    name: String,
+    path: String,
+    skip_conflicts: Option<bool>,
+) -> Result<Vec<SourceDirectory>, String> {
     let new_path = std::path::PathBuf::from(&path);
 
     // Check for name/id conflicts before adding
@@ -18,12 +22,29 @@ pub async fn add_source(name: String, path: String) -> Result<Vec<SourceDirector
     let existing_entities =
         crate::core::skill::scanner::collect_all_sources(&config.source_directories)
             .map_err(|e| e.to_string())?;
-    let conflicts =
+    let (conflicts, total_entities, conflicted_entity_ids) =
         crate::core::skill::scanner::check_conflicts(&new_path, &existing_entities)
             .map_err(|e| e.to_string())?;
 
     if !conflicts.is_empty() {
-        let json = serde_json::to_string(&conflicts).map_err(|e| e.to_string())?;
+        if skip_conflicts.unwrap_or(false) {
+            // Store conflicting entity IDs so they are excluded at scan time
+            let source = SourceDirectory {
+                id: uuid(),
+                name,
+                path: new_path,
+                is_builtin: false,
+                skip_entity_ids: conflicted_entity_ids,
+            };
+            let config = crate::core::config::add_source(source).map_err(|e| e.to_string())?;
+            return Ok(config.source_directories);
+        }
+
+        let response = ConflictResponse {
+            conflicts,
+            total_entities,
+        };
+        let json = serde_json::to_string(&response).map_err(|e| e.to_string())?;
         return Err(format!("CONFLICT:{}", json));
     }
 
@@ -32,6 +53,7 @@ pub async fn add_source(name: String, path: String) -> Result<Vec<SourceDirector
         name,
         path: new_path,
         is_builtin: false,
+        skip_entity_ids: vec![],
     };
     let config = crate::core::config::add_source(source).map_err(|e| e.to_string())?;
     Ok(config.source_directories)

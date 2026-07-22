@@ -33,7 +33,7 @@ import {
   FileText,
   Loader2,
 } from 'lucide-react';
-import type { ConflictInfo } from '@/types';
+import type { ConflictResult } from '@/types';
 
 export default function SourcesPage() {
   const navigate = useNavigate();
@@ -43,7 +43,7 @@ export default function SourcesPage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newPath, setNewPath] = useState('');
-  const [conflicts, setConflicts] = useState<ConflictInfo[]>([]);
+  const [conflictResult, setConflictResult] = useState<ConflictResult | null>(null);
   const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
   const nameManuallyEdited = useRef(false);
   const [loadingPath, setLoadingPath] = useState<string | null>(null);
@@ -99,8 +99,8 @@ export default function SourcesPage() {
       const errStr = String(err);
       if (errStr.startsWith('CONFLICT:')) {
         try {
-          const parsed = JSON.parse(errStr.slice(9)) as ConflictInfo[];
-          setConflicts(parsed);
+          const parsed = JSON.parse(errStr.slice(9)) as ConflictResult;
+          setConflictResult(parsed);
           setConflictDialogOpen(true);
         } catch {
           console.error('Failed to parse conflict info');
@@ -108,6 +108,22 @@ export default function SourcesPage() {
       } else {
         message.error(`添加失败：${errStr}`);
       }
+    }
+  };
+
+  const handleSkipConflicts = async () => {
+    if (!newName || !newPath) return;
+    try {
+      await addSource(newName, newPath, true);
+      message.success(`源目录「${newName}」添加成功（已跳过冲突实体）`);
+      setNewName('');
+      setNewPath('');
+      setAddDialogOpen(false);
+      setConflictDialogOpen(false);
+      setConflictResult(null);
+      fetchSkills();
+    } catch (err) {
+      message.error(`添加失败：${String(err)}`);
     }
   };
 
@@ -256,7 +272,10 @@ export default function SourcesPage() {
       </div>
 
       {/* Conflict Dialog */}
-      <Dialog open={conflictDialogOpen} onOpenChange={setConflictDialogOpen}>
+      <Dialog open={conflictDialogOpen} onOpenChange={(open) => {
+        setConflictDialogOpen(open);
+        if (!open) setConflictResult(null);
+      }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <div className="flex items-center gap-2">
@@ -265,11 +284,11 @@ export default function SourcesPage() {
             </div>
             <DialogDescription>
               该源目录中包含与已有 SKILL/AGENT/RULE 名称或 ID 冲突的实体，无法添加。
-              请自行处理以下冲突后重试：
+              请自行处理以下冲突后重试，或跳过有冲突的实体直接添加：
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-80 space-y-3 overflow-y-auto py-2">
-            {conflicts.map((conflict, idx) => (
+            {conflictResult?.conflicts.map((conflict, idx) => (
               <div
                 key={idx}
                 className="rounded-lg border bg-muted/30 p-3"
@@ -335,13 +354,34 @@ export default function SourcesPage() {
               </div>
             ))}
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setConflictDialogOpen(false)}
-            >
-              关闭
-            </Button>
+          <DialogFooter className="sm:justify-between">
+            <div className="text-xs text-muted-foreground">
+              共 {conflictResult?.total_entities ?? 0} 个实体，
+              {new Set((conflictResult?.conflicts ?? []).map(c => c.new_path)).size} 个存在冲突
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setConflictDialogOpen(false);
+                  setConflictResult(null);
+                }}
+              >
+                关闭
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={
+                  conflictResult
+                    ? new Set(conflictResult.conflicts.map(c => c.new_path)).size >=
+                      conflictResult.total_entities
+                    : true
+                }
+                onClick={handleSkipConflicts}
+              >
+                跳过冲突，直接添加
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -2,6 +2,7 @@ use crate::core::types::{
     ConflictInfo, DeployTarget, Deployment, Entity, EntityType, Language, ParsedSkill, Result,
     SourceDirectory,
 };
+use std::collections::HashSet;
 use std::path::Path;
 
 use super::parser;
@@ -27,7 +28,7 @@ fn detect_language(text: &str) -> Language {
 }
 
 /// Scan a single directory for SKILL.md files
-pub fn scan_directory(dir: &Path) -> Result<Vec<Entity>> {
+pub fn scan_directory(dir: &Path, skip_ids: &[String]) -> Result<Vec<Entity>> {
     let mut entities = Vec::new();
 
     if !dir.exists() || !dir.is_dir() {
@@ -65,6 +66,11 @@ pub fn scan_directory(dir: &Path) -> Result<Vec<Entity>> {
                     .map(|n| n.to_string_lossy().to_string())
                     .unwrap_or_default()
             });
+
+        // Skip entities that are in the skip list
+        if skip_ids.contains(&id) {
+            continue;
+        }
 
         let is_git_repo = is_git_repository(&resource_dir);
         let remote_url = if is_git_repo {
@@ -106,7 +112,7 @@ pub fn scan_directory(dir: &Path) -> Result<Vec<Entity>> {
 pub fn collect_all_sources(sources: &[SourceDirectory]) -> Result<Vec<Entity>> {
     let mut all = Vec::new();
     for source in sources {
-        let entities = scan_directory(&source.path)?;
+        let entities = scan_directory(&source.path, &source.skip_entity_ids)?;
 
         if source.is_builtin {
             for mut entity in entities {
@@ -127,12 +133,15 @@ pub fn collect_all_sources(sources: &[SourceDirectory]) -> Result<Vec<Entity>> {
 
 /// Check for name/id conflicts between a new source directory and existing entities,
 /// as well as internal conflicts within the new source directory itself.
+/// Returns (conflicts, total_entities_scanned, conflicted_new_entity_ids).
 pub fn check_conflicts(
     new_source_dir: &Path,
     existing_entities: &[Entity],
-) -> Result<Vec<ConflictInfo>> {
-    let new_entities = scan_directory(new_source_dir)?;
+) -> Result<(Vec<ConflictInfo>, usize, Vec<String>)> {
+    let new_entities = scan_directory(new_source_dir, &[])?;
+    let total_entities = new_entities.len();
     let mut conflicts = Vec::new();
+    let mut conflicted_new_ids = HashSet::new();
 
     // Check internal conflicts within the new source directory
     for i in 0..new_entities.len() {
@@ -144,6 +153,8 @@ pub fn check_conflicts(
                     new_path: new_entities[i].source_path.to_string_lossy().to_string(),
                     existing_path: new_entities[j].source_path.to_string_lossy().to_string(),
                 });
+                conflicted_new_ids.insert(new_entities[i].id.clone());
+                conflicted_new_ids.insert(new_entities[j].id.clone());
             }
             if new_entities[i].id == new_entities[j].id {
                 conflicts.push(ConflictInfo {
@@ -152,6 +163,8 @@ pub fn check_conflicts(
                     new_path: new_entities[i].source_path.to_string_lossy().to_string(),
                     existing_path: new_entities[j].source_path.to_string_lossy().to_string(),
                 });
+                conflicted_new_ids.insert(new_entities[i].id.clone());
+                conflicted_new_ids.insert(new_entities[j].id.clone());
             }
         }
     }
@@ -165,6 +178,7 @@ pub fn check_conflicts(
                 new_path: new_entity.source_path.to_string_lossy().to_string(),
                 existing_path: existing.source_path.to_string_lossy().to_string(),
             });
+            conflicted_new_ids.insert(new_entity.id.clone());
         }
         if let Some(existing) = existing_entities.iter().find(|e| e.id == new_entity.id) {
             conflicts.push(ConflictInfo {
@@ -173,10 +187,12 @@ pub fn check_conflicts(
                 new_path: new_entity.source_path.to_string_lossy().to_string(),
                 existing_path: existing.source_path.to_string_lossy().to_string(),
             });
+            conflicted_new_ids.insert(new_entity.id.clone());
         }
     }
 
-    Ok(conflicts)
+    let conflicted_entity_ids: Vec<String> = conflicted_new_ids.into_iter().collect();
+    Ok((conflicts, total_entities, conflicted_entity_ids))
 }
 
 /// Given a list of all entities, return the IDs of entities that have

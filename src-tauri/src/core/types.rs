@@ -89,6 +89,8 @@ pub struct SourceDirectory {
     pub path: PathBuf,
     #[serde(default)]
     pub is_builtin: bool,
+    #[serde(default)]
+    pub skip_entity_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -134,6 +136,12 @@ pub struct ConflictInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConflictResponse {
+    pub conflicts: Vec<ConflictInfo>,
+    pub total_entities: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     pub version: String,
     pub source_directories: Vec<SourceDirectory>,
@@ -169,6 +177,7 @@ impl Default for AppConfig {
                 name: "Claude Skills".to_string(),
                 path: default_skills_path,
                 is_builtin: true,
+                skip_entity_ids: vec![],
             }],
             deployable_projects: vec![],
             categories: vec![

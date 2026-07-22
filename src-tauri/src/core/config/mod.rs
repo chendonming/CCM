@@ -16,6 +16,7 @@ fn default_skills_source() -> SourceDirectory {
         name: "Claude Skills".to_string(),
         path: home_dir().join(".claude").join("skills"),
         is_builtin: true,
+        skip_entity_ids: vec![],
     }
 }
 

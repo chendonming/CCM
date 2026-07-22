@@ -33,6 +33,7 @@ export interface SourceDirectory {
   name: string;
   path: string;
   is_builtin?: boolean;
+  skip_entity_ids?: string[];
 }
 
 export interface MemoryEntry {
@@ -56,6 +57,11 @@ export interface ConflictInfo {
   value: string;
   new_path: string;
   existing_path: string;
+}
+
+export interface ConflictResult {
+  conflicts: ConflictInfo[];
+  total_entities: number;
 }
 
 export interface DeployableProject {
