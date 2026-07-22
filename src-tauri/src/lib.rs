@@ -33,10 +33,12 @@ pub fn run() {
             commands::skills::deploy_skill,
             commands::skills::undeploy_skill,
             commands::skills::delete_entity,
+            commands::skills::get_conflict_ids,
             // Sources
             commands::sources::list_sources,
             commands::sources::add_source,
             commands::sources::remove_source,
+            commands::sources::open_in_explorer,
             // Git import
             commands::git_import::import_from_github,
             commands::git_import::check_git_updates,

@@ -126,6 +126,14 @@ pub struct ParsedSkill {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConflictInfo {
+    pub conflict_type: String,
+    pub value: String,
+    pub new_path: String,
+    pub existing_path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     pub version: String,
     pub source_directories: Vec<SourceDirectory>,

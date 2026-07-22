@@ -1,5 +1,6 @@
 use crate::core::types::{
-    DeployTarget, Deployment, Entity, EntityType, Language, ParsedSkill, Result, SourceDirectory,
+    ConflictInfo, DeployTarget, Deployment, Entity, EntityType, Language, ParsedSkill, Result,
+    SourceDirectory,
 };
 use std::path::Path;
 
@@ -124,7 +125,83 @@ pub fn collect_all_sources(sources: &[SourceDirectory]) -> Result<Vec<Entity>> {
     Ok(all)
 }
 
-/// Check if a directory is inside a git repository
+/// Check for name/id conflicts between a new source directory and existing entities,
+/// as well as internal conflicts within the new source directory itself.
+pub fn check_conflicts(
+    new_source_dir: &Path,
+    existing_entities: &[Entity],
+) -> Result<Vec<ConflictInfo>> {
+    let new_entities = scan_directory(new_source_dir)?;
+    let mut conflicts = Vec::new();
+
+    // Check internal conflicts within the new source directory
+    for i in 0..new_entities.len() {
+        for j in (i + 1)..new_entities.len() {
+            if new_entities[i].name == new_entities[j].name {
+                conflicts.push(ConflictInfo {
+                    conflict_type: "name".to_string(),
+                    value: new_entities[i].name.clone(),
+                    new_path: new_entities[i].source_path.to_string_lossy().to_string(),
+                    existing_path: new_entities[j].source_path.to_string_lossy().to_string(),
+                });
+            }
+            if new_entities[i].id == new_entities[j].id {
+                conflicts.push(ConflictInfo {
+                    conflict_type: "id".to_string(),
+                    value: new_entities[i].id.clone(),
+                    new_path: new_entities[i].source_path.to_string_lossy().to_string(),
+                    existing_path: new_entities[j].source_path.to_string_lossy().to_string(),
+                });
+            }
+        }
+    }
+
+    // Check cross-source conflicts between new entities and existing entities
+    for new_entity in &new_entities {
+        if let Some(existing) = existing_entities.iter().find(|e| e.name == new_entity.name) {
+            conflicts.push(ConflictInfo {
+                conflict_type: "name".to_string(),
+                value: new_entity.name.clone(),
+                new_path: new_entity.source_path.to_string_lossy().to_string(),
+                existing_path: existing.source_path.to_string_lossy().to_string(),
+            });
+        }
+        if let Some(existing) = existing_entities.iter().find(|e| e.id == new_entity.id) {
+            conflicts.push(ConflictInfo {
+                conflict_type: "id".to_string(),
+                value: new_entity.id.clone(),
+                new_path: new_entity.source_path.to_string_lossy().to_string(),
+                existing_path: existing.source_path.to_string_lossy().to_string(),
+            });
+        }
+    }
+
+    Ok(conflicts)
+}
+
+/// Given a list of all entities, return the IDs of entities that have
+/// name or id conflicts with another entity in the same list.
+pub fn get_conflict_ids(entities: &[Entity]) -> Vec<String> {
+    let mut conflicted: Vec<String> = Vec::new();
+
+    for i in 0..entities.len() {
+        for j in (i + 1)..entities.len() {
+            if entities[i].name == entities[j].name {
+                conflicted.push(entities[i].id.clone());
+                conflicted.push(entities[j].id.clone());
+            } else if entities[i].id == entities[j].id {
+                conflicted.push(entities[i].id.clone());
+                conflicted.push(entities[j].id.clone());
+            }
+        }
+    }
+
+    conflicted.sort();
+    conflicted.dedup();
+    conflicted
+}
+
+//// Check if a directory is inside a git repository
 pub fn is_git_repository(dir: &Path) -> bool {
     let mut check_dir = Some(dir);
     while let Some(d) = check_dir {

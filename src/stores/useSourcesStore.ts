@@ -27,13 +27,9 @@ export const useSourcesStore = create<SourcesState>((set, get) => ({
   },
 
   addSource: async (name: string, path: string) => {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const sources = await invoke<SourceDirectory[]>('add_source', { name, path });
-      set({ sources });
-    } catch (err) {
-      set({ error: String(err) });
-    }
+    const { invoke } = await import('@tauri-apps/api/core');
+    const sources = await invoke<SourceDirectory[]>('add_source', { name, path });
+    set({ sources });
   },
 
   removeSource: async (id: string) => {

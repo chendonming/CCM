@@ -51,6 +51,13 @@ export interface MemoryGraph {
   orphan_references: string[];
 }
 
+export interface ConflictInfo {
+  conflict_type: string;
+  value: string;
+  new_path: string;
+  existing_path: string;
+}
+
 export interface DeployableProject {
   name: string;
   root_path: string;

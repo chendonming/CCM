@@ -13,6 +13,15 @@ pub async fn list_skills(_state: State<'_, AppState>) -> Result<Vec<Entity>, Str
 }
 
 #[tauri::command]
+pub async fn get_conflict_ids(_state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    let config = crate::core::config::load_config().map_err(|e| e.to_string())?;
+    let entities =
+        crate::core::skill::scanner::collect_all_sources(&config.source_directories)
+            .map_err(|e| e.to_string())?;
+    Ok(crate::core::skill::scanner::get_conflict_ids(&entities))
+}
+
+#[tauri::command]
 pub async fn get_skill(skill_id: String, _state: State<'_, AppState>) -> Result<Entity, String> {
     let config = crate::core::config::load_config().map_err(|e| e.to_string())?;
     let entities =

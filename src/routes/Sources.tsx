@@ -28,8 +28,10 @@ import {
   RefreshCw,
   ExternalLink,
   FolderGit2,
+  AlertTriangle,
+  FileText,
 } from 'lucide-react';
-import type { SourceDirectory } from '@/types';
+import type { ConflictInfo } from '@/types';
 
 export default function SourcesPage() {
   const navigate = useNavigate();
@@ -38,19 +40,43 @@ export default function SourcesPage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newPath, setNewPath] = useState('');
+  const [conflicts, setConflicts] = useState<ConflictInfo[]>([]);
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchSources();
     fetchSkills();
   }, []);
 
+  const openInExplorer = async (path: string) => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    try {
+      await invoke('open_in_explorer', { path });
+    } catch (err) {
+      console.error('Failed to open explorer:', err);
+    }
+  };
+
   const handleAdd = async () => {
     if (!newName || !newPath) return;
-    await addSource(newName, newPath);
-    setNewName('');
-    setNewPath('');
-    setAddDialogOpen(false);
-    fetchSkills(); // Refresh skills after adding source
+    try {
+      await addSource(newName, newPath);
+      setNewName('');
+      setNewPath('');
+      setAddDialogOpen(false);
+      fetchSkills();
+    } catch (err) {
+      const errStr = String(err);
+      if (errStr.startsWith('CONFLICT:')) {
+        try {
+          const parsed = JSON.parse(errStr.slice(9)) as ConflictInfo[];
+          setConflicts(parsed);
+          setConflictDialogOpen(true);
+        } catch {
+          console.error('Failed to parse conflict info');
+        }
+      }
+    }
   };
 
   const handleRemove = async (id: string) => {
@@ -107,7 +133,7 @@ export default function SourcesPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">目录路径</label>
                   <Input
-                    placeholder="例如：E:\workplace\ECC\skills"
+                    placeholder="例如：E:\\workplace\\ECC\\skills"
                     value={newPath}
                     onChange={(e) => setNewPath(e.target.value)}
                   />
@@ -182,6 +208,77 @@ export default function SourcesPage() {
           ))
         )}
       </div>
+
+      {/* Conflict Dialog */}
+      <Dialog open={conflictDialogOpen} onOpenChange={setConflictDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <DialogTitle>检测到名称冲突</DialogTitle>
+            </div>
+            <DialogDescription>
+              该源目录中包含与已有 SKILL/AGENT/RULE 名称或 ID 冲突的实体，无法添加。
+              请自行处理以下冲突后重试：
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-80 space-y-3 overflow-y-auto py-2">
+            {conflicts.map((conflict, idx) => (
+              <div
+                key={idx}
+                className="rounded-lg border bg-muted/30 p-3"
+              >
+                <div className="mb-2 flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                      conflict.conflict_type === 'name'
+                        ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
+                        : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                    }`}
+                  >
+                    {conflict.conflict_type === 'name' ? '名称' : 'ID'}
+                  </span>
+                  <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+                    {conflict.value}
+                  </code>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5 text-destructive shrink-0" />
+                    <span className="text-muted-foreground shrink-0">新源:</span>
+                    <button
+                      className="flex-1 truncate rounded px-1.5 py-0.5 text-left font-mono text-xs text-blue-600 underline-offset-2 hover:bg-accent hover:underline dark:text-blue-400"
+                      title="在资源管理器中打开"
+                      onClick={() => openInExplorer(conflict.new_path)}
+                    >
+                      {conflict.new_path}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground shrink-0">已有:</span>
+                    <button
+                      className="flex-1 truncate rounded px-1.5 py-0.5 text-left font-mono text-xs text-blue-600 underline-offset-2 hover:bg-accent hover:underline dark:text-blue-400"
+                      title="在资源管理器中打开"
+                      onClick={() => openInExplorer(conflict.existing_path)}
+                    >
+                      {conflict.existing_path}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConflictDialogOpen(false)}
+            >
+              关闭
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

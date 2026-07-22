@@ -35,6 +35,7 @@ import {
   FolderGit2,
   PlusCircle,
   BookOpen,
+  AlertTriangle,
 } from 'lucide-react';
 import type { Entity } from '@/types';
 
@@ -52,7 +53,7 @@ const languageColor: Record<string, string> = {
 
 export default function SkillsPage() {
   const navigate = useNavigate();
-  const { skills, loading, filter, setFilter, fetchSkills } = useSkillsStore();
+  const { skills, loading, filter, setFilter, fetchSkills, conflictedIds } = useSkillsStore();
   const { fetchSources } = useSourcesStore();
   const [selectedSkill, setSelectedSkill] = useState<Entity | null>(null);
 
@@ -183,7 +184,13 @@ export default function SkillsPage() {
                 >
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <BookOpen className="h-4 w-4 text-muted-foreground" />
+                      {conflictedIds.has(skill.id) ? (
+                        <span title="名称/ID 冲突">
+                          <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                        </span>
+                      ) : (
+                        <BookOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                      )}
                       <div>
                         <div className="font-medium">{skill.name}</div>
                         <div className="text-xs text-muted-foreground line-clamp-1">
