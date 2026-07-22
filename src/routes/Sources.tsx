@@ -84,11 +84,9 @@ export default function SourcesPage() {
             刷新
           </Button>
           <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="mr-1 h-4 w-4" />
-                添加源目录
-              </Button>
+            <DialogTrigger render={<Button size="sm" />}>
+              <Plus className="mr-1 h-4 w-4" />
+              添加源目录
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>

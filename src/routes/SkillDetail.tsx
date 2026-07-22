@@ -185,9 +185,7 @@ export default function SkillDetailPage() {
               </Button>
             </Link>
             <Dialog open={deployDialogOpen} onOpenChange={setDeployDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">部署技能</Button>
-              </DialogTrigger>
+              <DialogTrigger render={<Button size="sm" />}>部署技能</DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>部署 {skill.name}</DialogTitle>

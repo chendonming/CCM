@@ -9,8 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "tauri": "tauri",
-    "dev:react-devtools": "react-devtools",
-    "tauri:devtools": "tauri dev"
+    "dev:react-devtools": "react-devtools"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
