@@ -1,0 +1,1 @@
+- [base-ui nested button fix](base-ui-nested-button-fix.md) — @base-ui/react TooltipTrigger 默认渲染 button，需要用 render prop 代替嵌套

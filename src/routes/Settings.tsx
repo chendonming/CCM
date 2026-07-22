@@ -9,13 +9,21 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import {
   Settings,
-  Save,
-  Link,
   Plus,
   Trash2,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
 import type { DeployableProject } from '@/types';
 
@@ -117,6 +125,47 @@ export default function SettingsPage() {
                 启动时跳过符号链接权限检测
               </label>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Theme */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">主题</CardTitle>
+            <CardDescription>选择界面主题外观</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Select
+              value={config.ui_preferences.theme}
+              onValueChange={(value) => {
+                if (!value) return;
+                updateConfig({
+                  ...config,
+                  ui_preferences: {
+                    ...config.ui_preferences,
+                    theme: value,
+                  },
+                });
+              }}
+            >
+              <SelectTrigger className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="system">
+                  <Monitor className="h-4 w-4" />
+                  跟随系统
+                </SelectItem>
+                <SelectItem value="light">
+                  <Sun className="h-4 w-4" />
+                  浅色
+                </SelectItem>
+                <SelectItem value="dark">
+                  <Moon className="h-4 w-4" />
+                  深色
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </CardContent>
         </Card>
 
