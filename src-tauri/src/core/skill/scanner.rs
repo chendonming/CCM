@@ -1,4 +1,6 @@
-use crate::core::types::{Entity, EntityType, Language, ParsedSkill, Result};
+use crate::core::types::{
+    DeployTarget, Deployment, Entity, EntityType, Language, ParsedSkill, Result, SourceDirectory,
+};
 use std::path::Path;
 
 use super::parser;
@@ -92,6 +94,7 @@ pub fn scan_directory(dir: &Path) -> Result<Vec<Entity>> {
             is_git_repo,
             remote_url,
             body: parsed.body,
+            is_builtin_source: false,
         });
     }
 
@@ -99,11 +102,24 @@ pub fn scan_directory(dir: &Path) -> Result<Vec<Entity>> {
 }
 
 /// Scan multiple source directories
-pub fn collect_all_sources(sources: &[crate::core::types::SourceDirectory]) -> Result<Vec<Entity>> {
+pub fn collect_all_sources(sources: &[SourceDirectory]) -> Result<Vec<Entity>> {
     let mut all = Vec::new();
     for source in sources {
         let entities = scan_directory(&source.path)?;
-        all.extend(entities);
+
+        if source.is_builtin {
+            for mut entity in entities {
+                entity.is_builtin_source = true;
+                entity.deployments = vec![Deployment {
+                    target: DeployTarget::Global,
+                    target_path: entity.resource_dir.clone(),
+                    active: true,
+                }];
+                all.push(entity);
+            }
+        } else {
+            all.extend(entities);
+        }
     }
     Ok(all)
 }

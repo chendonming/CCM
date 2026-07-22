@@ -78,6 +78,8 @@ pub struct Entity {
     pub is_git_repo: bool,
     pub remote_url: Option<String>,
     pub body: String,
+    #[serde(default)]
+    pub is_builtin_source: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

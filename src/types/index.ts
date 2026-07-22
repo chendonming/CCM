@@ -25,6 +25,7 @@ export interface Entity {
   is_git_repo: boolean;
   remote_url: string | null;
   body: string;
+  is_builtin_source: boolean;
 }
 
 export interface SourceDirectory {

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Entity, Deployment } from '@/types';
+import type { Entity } from '@/types';
 
 interface SkillsState {
   skills: Entity[];
@@ -13,6 +13,7 @@ interface SkillsState {
   fetchSkills: () => Promise<void>;
   deploySkill: (sourcePath: string, targetType: string, projectRoot?: string) => Promise<string>;
   undeploySkill: (targetPath: string) => Promise<void>;
+  deleteEntity: (resourceDir: string) => Promise<void>;
   setFilter: (filter: Partial<SkillsState['filter']>) => void;
 }
 
@@ -52,6 +53,13 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
     const { invoke } = await import('@tauri-apps/api/core');
     await invoke('undeploy_skill', { targetPath });
     await get().fetchSkills();
+  },
+
+  deleteEntity: async (resourceDir: string, force = false) => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const result = await invoke<string>('delete_entity', { resourceDir, force });
+    await get().fetchSkills();
+    return result;
   },
 
   setFilter: (filter) => {

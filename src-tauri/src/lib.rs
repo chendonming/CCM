@@ -32,6 +32,7 @@ pub fn run() {
             commands::skills::get_skill,
             commands::skills::deploy_skill,
             commands::skills::undeploy_skill,
+            commands::skills::delete_entity,
             // Sources
             commands::sources::list_sources,
             commands::sources::add_source,

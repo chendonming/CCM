@@ -70,3 +70,20 @@ pub async fn undeploy_skill(target_path: String) -> Result<(), String> {
     crate::core::symlink::remove_symlink(&path).map_err(|e| e.to_string())?;
     Ok(())
 }
+
+#[tauri::command]
+pub async fn delete_entity(resource_dir: String, force: bool) -> Result<String, String> {
+    let path = std::path::PathBuf::from(&resource_dir);
+    if !path.exists() {
+        return Err(format!("Path not found: {}", resource_dir));
+    }
+
+    if force {
+        std::fs::remove_dir_all(&path).map_err(|e| e.to_string())?;
+        return Ok("deleted".to_string());
+    }
+
+    // Try sending to recycle bin first
+    trash::delete_all(&path).map_err(|e| format!("trash_failed:{}", e))?;
+    Ok("trashed".to_string())
+}

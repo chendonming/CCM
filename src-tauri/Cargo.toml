@@ -32,3 +32,4 @@ chrono = { version = "0.4", features = ["serde"] }
 serde_yaml = "0.9"
 tokio = { version = "1", features = ["full"] }
 walkdir = "2"
+trash = "5"

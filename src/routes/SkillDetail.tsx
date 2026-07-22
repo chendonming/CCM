@@ -34,6 +34,7 @@ import {
   BookOpen,
   Info,
   Circle,
+  Trash2,
 } from 'lucide-react';
 import type { Entity } from '@/types';
 
@@ -46,10 +47,12 @@ const languageLabel: Record<string, string> = {
 export default function SkillDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { skills, fetchSkills, deploySkill } = useSkillsStore();
+  const { skills, fetchSkills, deploySkill, deleteEntity } = useSkillsStore();
   const [skill, setSkill] = useState<Entity | null>(null);
   const [activeTab, setActiveTab] = useState('preview');
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [permanentDeleteDialogOpen, setPermanentDeleteDialogOpen] = useState(false);
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
   const [deployStatusOpen, setDeployStatusOpen] = useState(false);
   const [deployTarget, setDeployTarget] = useState('global');
@@ -144,6 +147,34 @@ export default function SkillDetailPage() {
     setLoading(false);
   };
 
+  const handleDelete = async () => {
+    if (!skill) return;
+    setLoading(true);
+    try {
+      await deleteEntity(skill.resource_dir);
+      setDeleteDialogOpen(false);
+      navigate('/skills');
+    } catch (err) {
+      // Trash failed — show permanent delete confirmation
+      setDeleteDialogOpen(false);
+      setPermanentDeleteDialogOpen(true);
+    }
+    setLoading(false);
+  };
+
+  const handlePermanentDelete = async () => {
+    if (!skill) return;
+    setLoading(true);
+    try {
+      await deleteEntity(skill.resource_dir, true);
+      setPermanentDeleteDialogOpen(false);
+      navigate('/skills');
+    } catch (err) {
+      console.error('Permanent delete failed:', err);
+    }
+    setLoading(false);
+  };
+
   if (!skill) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -228,49 +259,95 @@ export default function SkillDetailPage() {
                 编辑
               </Button>
             </Link>
-            <Dialog open={deployDialogOpen} onOpenChange={setDeployDialogOpen}>
-              <DialogTrigger render={<Button size="sm" />}>部署技能</DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>部署 {skill.name}</DialogTitle>
-                  <DialogDescription>选择部署目标位置</DialogDescription>
-                </DialogHeader>
-                <div className="py-4">
-                  <Select value={deployTarget} onValueChange={setDeployTarget}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="global">
-                        <div className="flex items-center gap-2">
-                          <Globe className="h-4 w-4" />
-                          全局 (~/.claude/skills/)
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="project">
-                        <div className="flex items-center gap-2">
-                          <FolderGit2 className="h-4 w-4" />
-                          项目级
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {deployTarget === 'project' && (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      // TODO: 项目级部署需要选择一个项目路径
-                    </p>
-                  )}
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setDeployDialogOpen(false)}>
-                    取消
-                  </Button>
-                  <Button onClick={handleDeploy} disabled={loading}>
-                    确认部署
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            {skill.is_builtin_source ? (
+              <>
+                <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
+                  <Trash2 className="mr-1 h-4 w-4" />
+                  删除
+                </Button>
+                <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>删除 {skill.name}</DialogTitle>
+                      <DialogDescription>
+                        确定要删除此技能吗？文件将移至回收站，可恢复。
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                        取消
+                      </Button>
+                      <Button variant="destructive" onClick={handleDelete} disabled={loading}>
+                        {loading ? '删除中...' : '确认删除'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                {/* Permanent delete confirmation — shown when trash fails */}
+                <Dialog open={permanentDeleteDialogOpen} onOpenChange={setPermanentDeleteDialogOpen}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>回收站不可用</DialogTitle>
+                      <DialogDescription>
+                        系统回收站无法使用，将<strong>永久删除</strong>此技能目录，此操作不可撤销。是否继续？
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setPermanentDeleteDialogOpen(false)}>
+                        取消
+                      </Button>
+                      <Button variant="destructive" onClick={handlePermanentDelete} disabled={loading}>
+                        {loading ? '删除中...' : '确认永久删除'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </>
+            ) : (
+              <Dialog open={deployDialogOpen} onOpenChange={setDeployDialogOpen}>
+                <DialogTrigger render={<Button size="sm" />}>部署技能</DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>部署 {skill.name}</DialogTitle>
+                    <DialogDescription>选择部署目标位置</DialogDescription>
+                  </DialogHeader>
+                  <div className="py-4">
+                    <Select value={deployTarget} onValueChange={setDeployTarget}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="global">
+                          <div className="flex items-center gap-2">
+                            <Globe className="h-4 w-4" />
+                            全局 (~/.claude/skills/)
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="project">
+                          <div className="flex items-center gap-2">
+                            <FolderGit2 className="h-4 w-4" />
+                            项目级
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {deployTarget === 'project' && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        // TODO: 项目级部署需要选择一个项目路径
+                      </p>
+                    )}
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setDeployDialogOpen(false)}>
+                      取消
+                    </Button>
+                    <Button onClick={handleDeploy} disabled={loading}>
+                      确认部署
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         </div>
       </div>
