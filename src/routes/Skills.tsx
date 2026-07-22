@@ -79,7 +79,7 @@ export default function SkillsPage() {
   const categories = [...new Set(skills.map((s) => s.category))];
 
   return (
-    <div className="p-6">
+    <div className="p-6 h-full flex flex-col">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">SKILL 管理器</h1>
@@ -143,17 +143,17 @@ export default function SkillsPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border flex-1 min-h-0 overflow-auto">
+        <Table className="table-fixed">
           <TableHeader>
             <TableRow>
-              <TableHead>名称</TableHead>
-              <TableHead>分类</TableHead>
-              <TableHead>语言</TableHead>
-              <TableHead>来源</TableHead>
-              <TableHead>部署</TableHead>
-              <TableHead>Git</TableHead>
-              <TableHead className="w-12"></TableHead>
+              <TableHead className="w-[35%]">名称</TableHead>
+              <TableHead className="w-0 min-w-20">分类</TableHead>
+              <TableHead className="w-0 min-w-16">语言</TableHead>
+              <TableHead className="w-0 min-w-28">来源</TableHead>
+              <TableHead className="w-0 min-w-28">部署</TableHead>
+              <TableHead className="w-0 min-w-16">Git</TableHead>
+              <TableHead className="w-0 min-w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -177,12 +177,8 @@ export default function SkillsPage() {
               </TableRow>
             ) : (
               filteredSkills.map((skill) => (
-                <TableRow
-                  key={skill.id}
-                  className="cursor-pointer"
-                  onClick={() => navigate(`/skills/${skill.id}`)}
-                >
-                  <TableCell>
+                <TableRow key={skill.id}>
+                  <TableCell className="whitespace-normal overflow-hidden cursor-pointer" onClick={() => navigate(`/skills/${skill.id}`)}>
                     <div className="flex items-center gap-2">
                       {conflictedIds.has(skill.id) ? (
                         <span title="名称/ID 冲突">
@@ -191,8 +187,8 @@ export default function SkillsPage() {
                       ) : (
                         <BookOpen className="h-4 w-4 text-muted-foreground shrink-0" />
                       )}
-                      <div>
-                        <div className="font-medium">{skill.name}</div>
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{skill.name}</div>
                         <div className="text-xs text-muted-foreground line-clamp-1">
                           {skill.description}
                         </div>
@@ -207,7 +203,7 @@ export default function SkillsPage() {
                       {languageLabel[skill.language] || skill.language}
                     </span>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
+                  <TableCell className="text-xs text-muted-foreground truncate">
                     {skill.origin || '-'}
                   </TableCell>
                   <TableCell>
@@ -241,7 +237,8 @@ export default function SkillsPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
                       <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
                         <MoreHorizontal className="h-4 w-4" />
                       </DropdownMenuTrigger>
@@ -257,6 +254,7 @@ export default function SkillsPage() {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
