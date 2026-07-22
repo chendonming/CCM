@@ -15,6 +15,7 @@ pub async fn add_source(name: String, path: String) -> Result<Vec<SourceDirector
         id: uuid(),
         name,
         path: std::path::PathBuf::from(&path),
+        is_builtin: false,
     };
     let config = crate::core::config::add_source(source).map_err(|e| e.to_string())?;
     Ok(config.source_directories)

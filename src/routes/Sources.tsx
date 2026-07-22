@@ -138,7 +138,14 @@ export default function SourcesPage() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="text-base">{source.name}</CardTitle>
+                    <CardTitle className="text-base">
+                      {source.name}
+                      {source.is_builtin && (
+                        <span className="ml-2 inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                          内置
+                        </span>
+                      )}
+                    </CardTitle>
                     <CardDescription className="mt-1 font-mono text-xs">
                       {source.path}
                     </CardDescription>
@@ -146,7 +153,9 @@ export default function SourcesPage() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    disabled={source.is_builtin}
                     onClick={() => handleRemove(source.id)}
+                    title={source.is_builtin ? '内置源不可删除' : '删除源目录'}
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>

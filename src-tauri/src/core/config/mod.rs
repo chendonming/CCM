@@ -3,11 +3,24 @@ pub mod migration;
 use crate::core::types::{AppConfig, DeployableProject, Result, SourceDirectory};
 use std::path::PathBuf;
 
-fn config_dir() -> PathBuf {
+fn home_dir() -> PathBuf {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .unwrap_or_else(|_| ".".to_string());
-    PathBuf::from(home).join(".claude-ccm")
+    PathBuf::from(home)
+}
+
+fn default_skills_source() -> SourceDirectory {
+    SourceDirectory {
+        id: "builtin_claude_skills".to_string(),
+        name: "Claude Skills".to_string(),
+        path: home_dir().join(".claude").join("skills"),
+        is_builtin: true,
+    }
+}
+
+fn config_dir() -> PathBuf {
+    home_dir().join(".claude-ccm")
 }
 
 fn config_path() -> PathBuf {
@@ -19,13 +32,24 @@ pub fn load_config() -> Result<AppConfig> {
     let path = config_path();
 
     if !path.exists() {
-        let config = AppConfig::default();
+        let mut config = AppConfig::default();
+        migration::migrate(&mut config);
         save_config(&config)?;
         return Ok(config);
     }
 
     let content = std::fs::read_to_string(&path)?;
-    let config: AppConfig = serde_json::from_str(&content)?;
+    let mut config: AppConfig = serde_json::from_str(&content)?;
+
+    migration::migrate(&mut config);
+
+    // Ensure built-in Claude Skills source is always present
+    let builtin = default_skills_source();
+    if !config.source_directories.iter().any(|s| s.id == "builtin_claude_skills") {
+        config.source_directories.push(builtin);
+        save_config(&config)?;
+    }
+
     Ok(config)
 }
 
@@ -58,6 +82,12 @@ pub fn add_source(source: SourceDirectory) -> Result<AppConfig> {
 /// Remove a source directory by id
 pub fn remove_source(id: &str) -> Result<AppConfig> {
     let mut config = load_config()?;
+
+    // Prevent removal of built-in sources
+    if config.source_directories.iter().any(|s| s.id == id && s.is_builtin) {
+        return Ok(config);
+    }
+
     config.source_directories.retain(|s| s.id != id);
     save_config(&config)?;
     Ok(config)

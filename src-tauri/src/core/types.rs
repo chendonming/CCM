@@ -85,6 +85,8 @@ pub struct SourceDirectory {
     pub id: String,
     pub name: String,
     pub path: PathBuf,
+    #[serde(default)]
+    pub is_builtin: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -145,9 +147,19 @@ pub struct UiPreferences {
 
 impl Default for AppConfig {
     fn default() -> Self {
+        let home = std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .unwrap_or_else(|_| ".".to_string());
+        let default_skills_path = std::path::PathBuf::from(&home).join(".claude").join("skills");
+
         Self {
-            version: "1".to_string(),
-            source_directories: vec![],
+            version: "2".to_string(),
+            source_directories: vec![SourceDirectory {
+                id: "builtin_claude_skills".to_string(),
+                name: "Claude Skills".to_string(),
+                path: default_skills_path,
+                is_builtin: true,
+            }],
             deployable_projects: vec![],
             categories: vec![
                 "前端".to_string(),

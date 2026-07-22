@@ -31,6 +31,7 @@ export interface SourceDirectory {
   id: string;
   name: string;
   path: string;
+  is_builtin?: boolean;
 }
 
 export interface MemoryEntry {
